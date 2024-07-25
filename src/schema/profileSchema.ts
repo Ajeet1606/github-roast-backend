@@ -15,4 +15,7 @@ export interface ProfileSchema {
   contributionsCollection: {
     totalCommitContributions: number;
   };
+  starredRepositories: {
+    totalCount: number;
+  }
 }

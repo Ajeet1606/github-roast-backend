@@ -1,15 +1,45 @@
 import axios from "axios";
 import { Request, Response } from "express";
 import { ProfileSchema } from "../schema/profileSchema";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function roastUser(request: Request, response: Response) {
   const userName = request.params.username;
-  const profileDetails:ProfileSchema = await getProfileDetails(userName);
-  response.send(profileDetails);
+  const userDetails: ProfileSchema = await getProfileDetails(userName);
+  // response.status(200).send(profileDetails);
+
+  const prompt = `Here's a GitHub profile for you to roast:
+    - Name: ${userDetails.name}
+    - Bio: ${userDetails.bio}
+    - Avatar URL: ${userDetails.avatarUrl}
+    - Repositories: ${userDetails.repositories.totalCount}
+    - Followers: ${userDetails.followers.totalCount}
+    - Following: ${userDetails.following.totalCount}
+    - Starred Repositories: ${userDetails.starredRepositories.totalCount}
+    - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} in this year.
+
+    Go ahead and give a satire roast of this GitHub user! Keep it around 100 words.`;
+  const result = await getRoastResponse(prompt);
+  response.status(200).send(result);
 }
 
-export async function getProfileDetails(userName: string) {
+async function getRoastResponse(prompt: string) {
+  try {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
+    
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro", systemInstruction: "Act as a satire and sarcastic person." });
 
+    const result = await model.generateContentStream(prompt);
+    console.log(result.response);
+    return result.response
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+    return error;
+  }
+}
+
+async function getProfileDetails(userName: string) {
   const GITHUB_GRAPHQL_API = process.env.GITHUB_GRAPHQL_API;
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
@@ -45,11 +75,10 @@ export async function getProfileDetails(userName: string) {
     login: userName,
     from: fromDateString,
     to: toDateString,
-    before: toDateString
+    before: toDateString,
   };
 
   try {
-
     const response = await axios.post(
       GITHUB_GRAPHQL_API!,
       { query, variables },
@@ -60,7 +89,7 @@ export async function getProfileDetails(userName: string) {
       }
     );
 
-    return response?.data?.data?.user
+    return response?.data?.data?.user;
   } catch (error) {
     console.log(error);
     return null;
