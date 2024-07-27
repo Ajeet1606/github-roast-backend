@@ -8,6 +8,15 @@ export async function roastUser(request: Request, response: Response) {
   const userDetails: ProfileSchema = await getProfileDetails(userName);
   // response.status(200).send(profileDetails);
 
+  if (!userDetails) {
+    response.setHeader("Content-Type", "text/event-stream");
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+    response.write(`data: Github Profile not found.\n\n`);
+    response.end();
+    return;
+  }
+
   const prompt = `Here's a GitHub profile for you to roast:
     - Name: ${userDetails.name}
     - Bio: ${userDetails.bio}
@@ -18,21 +27,35 @@ export async function roastUser(request: Request, response: Response) {
     - Starred Repositories: ${userDetails.starredRepositories.totalCount}
     - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} in this year.
 
-    Go ahead and give a satire roast of this GitHub user! Keep it around 100 words.`;
-  const result = await getRoastResponse(prompt);
-  response.status(200).send(result);
+    Go ahead and give a satire roast of this GitHub user! Keep it in around 100 words.`;
+  return await getRoastResponse(prompt, response);
 }
 
-async function getRoastResponse(prompt: string) {
+async function getRoastResponse(prompt: string, response: Response) {
   try {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-    
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro", systemInstruction: "Act as a satire and sarcastic person." });
 
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-pro",
+      systemInstruction: "Act as a satire and sarcastic person.",
+    });
+
+    response.setHeader("Content-Type", "text/event-stream");
     const result = await model.generateContentStream(prompt);
-    console.log(result.response);
-    return result.response
+    console.log("stream response");
+
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      // process.stdout.write(chunkText);
+      console.log(chunkText);
+      // result.stream.next().then(() => response.write("data: " + chunkText + "\n\n"));
+      response.write(`data: ${chunkText}\n\n`);
+    }
+    // Optional: Send a final message to indicate end of stream
+    response.write("data: [END]\n\n");
+    response.end(); // Close the response stream
+    return result.response;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     return error;
