@@ -34,10 +34,10 @@ export async function roastUser(request: Request, response: Response) {
 async function getRoastResponse(prompt: string, response: Response) {
   try {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-
+    const GEMINI_MODEL = process.env.GEMINI_MODEL!;
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: GEMINI_MODEL,
       systemInstruction: "Act as a satire and sarcastic person.",
     });
 
