@@ -164,11 +164,14 @@ function modifyPrompt(prompt: string, attempt: number): string {
 }
 
 function returnStreamedError(message: string, response: Response) {
-  response.setHeader("Content-Type", "text/event-stream");
-  response.setHeader("Cache-Control", "no-cache");
-  response.setHeader("Connection", "keep-alive");
-  response.write(`data: ${message}\n\n`);
-  response.write("data: [END]\n\n");
-  response.end();
-  return;
+  if (!response.headersSent) {
+    response.setHeader("Content-Type", "text/event-stream");
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+    response.write(`data: ${message}\n\n`);
+    response.write("data: [END]\n\n");
+    response.end();
+  } else {
+    console.error("Headers already sent, cannot send error response");
+  }
 }
