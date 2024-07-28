@@ -1,7 +1,10 @@
 import axios from "axios";
 import { Request, Response } from "express";
 import { ProfileSchema } from "../schema/profileSchema";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  GoogleGenerativeAI,
+  GoogleGenerativeAIResponseError,
+} from "@google/generative-ai";
 
 export async function roastUser(request: Request, response: Response) {
   const userName = request.params.username;
@@ -9,13 +12,7 @@ export async function roastUser(request: Request, response: Response) {
   // response.status(200).send(profileDetails);
 
   if (!userDetails) {
-    response.setHeader("Content-Type", "text/event-stream");
-    response.setHeader("Cache-Control", "no-cache");
-    response.setHeader("Connection", "keep-alive");
-    response.write(`data: Github Profile not found.\n\n`);
-    response.write("data: [END]\n\n");
-    response.end();
-    return;
+    return returnStreamedError("Github Profile not found.", response);
   }
 
   const prompt = `Here's a GitHub profile for you to roast:
@@ -45,7 +42,40 @@ async function getRoastResponse(prompt: string, response: Response) {
     });
 
     response.setHeader("Content-Type", "text/event-stream");
-    const result = await model.generateContentStream(prompt);
+    let attempt = 0;
+    const maxRetries = 3;
+    let result;
+
+    while (attempt < maxRetries) {
+      try {
+        result = await model.generateContentStream(prompt);
+        break; // Exit the loop if the request is successful
+      } catch (error) {
+        if (
+          error instanceof GoogleGenerativeAIResponseError &&
+          error.message.includes("SAFETY")
+        ) {
+          console.warn(
+            `Attempt ${attempt + 1} failed due to safety concerns. Retrying...`
+          );
+          // Optionally modify the prompt to make it less likely to be flagged
+          prompt = modifyPrompt(prompt, attempt);
+          attempt++;
+        } else {
+          return returnStreamedError(
+            "Unexpected error, Please try again.",
+            response
+          ); // Re-throw non-safety-related errors
+        }
+      }
+    }
+
+    if (!result) {
+      return returnStreamedError(
+        "Failed to generate a safe response after multiple attempts, please try again.",
+        response
+      );
+    }
 
     for await (const chunk of result.stream) {
       const chunkText = chunk.text();
@@ -57,6 +87,10 @@ async function getRoastResponse(prompt: string, response: Response) {
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     response.status(500).send("Error calling Gemini API: " + error);
+    return returnStreamedError(
+      "Error in calling Gemini API at the moment, Please try again.",
+      response
+    );
   }
 }
 
@@ -115,4 +149,26 @@ async function getProfileDetails(userName: string) {
     console.log(error);
     return null;
   }
+}
+
+function modifyPrompt(prompt: string, attempt: number): string {
+  // Modify the prompt based on the number of attempts
+  // This is a simple example; you can customize this function as needed
+  const suffixes = [
+    " Please ensure it's safe for all audiences.",
+    " Try to be less provocative.",
+    " Make it a bit softer in tone.",
+  ];
+
+  return `${prompt}${suffixes[attempt] || ""}`;
+}
+
+function returnStreamedError(message: string, response: Response) {
+  response.setHeader("Content-Type", "text/event-stream");
+  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Connection", "keep-alive");
+  response.write(`data: ${message}\n\n`);
+  response.write("data: [END]\n\n");
+  response.end();
+  return;
 }
