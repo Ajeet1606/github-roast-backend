@@ -18,8 +18,8 @@ const limiter = rateLimit({
 });
 
 const port = process.env.PORT;
-
-const allowedOrigins = ["https://roast-github.vercel.app/"];
+const FRONTEND_URL = process.env.FRONTEND_URL;
+const allowedOrigins = [FRONTEND_URL];
 const corsOptions = {
   origin: function (
     origin: string | undefined,
