@@ -26,10 +26,14 @@ export async function roastUser(request: Request, response: Response) {
     - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} in this year.
 
     Go ahead and give a satire roast of this GitHub user! Keep it in around 70 words. If they've done really great, appreaciate them as well.`;
-  return await getRoastResponse(prompt, response);
+  return await getRoastResponse(prompt, response, userDetails.avatarUrl);
 }
 
-async function getRoastResponse(prompt: string, response: Response) {
+async function getRoastResponse(
+  prompt: string,
+  response: Response,
+  avatarUrl: string
+) {
   try {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
     const GEMINI_MODEL = process.env.GEMINI_MODEL!;
@@ -83,13 +87,17 @@ async function getRoastResponse(prompt: string, response: Response) {
     }
 
     response.setHeader("Content-Type", "text/event-stream");
+    response.write(
+      `data: ${JSON.stringify({ type: "image", url: avatarUrl })}\n\n`
+    );
     for await (const chunk of result.stream) {
       const chunkText = chunk.text();
-      response.write(`data: ${chunkText}\n\n`);
+      response.write(`data: ${JSON.stringify({ type: 'roast', content: chunkText })}\n\n`);
     }
     // Optional: Send a final message to indicate end of stream
-    response.write("data: [END]\n\n");
+    response.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
     response.end(); // Close the response stream
+    // console.log("Response sent successfully");
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     // response.status(500).send("Error calling Gemini API: " + error);
@@ -174,8 +182,8 @@ function returnStreamedError(message: string, response: Response) {
     response.setHeader("Content-Type", "text/event-stream");
     response.setHeader("Cache-Control", "no-cache");
     response.setHeader("Connection", "keep-alive");
-    response.write(`data: ${message}\n\n`);
-    response.write("data: [END]\n\n");
+    response.write(`data: ${JSON.stringify({ type: 'error', content: message })}\n\n`);
+    response.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
     response.end();
   } else {
     console.error("Headers already sent, cannot send error response");
