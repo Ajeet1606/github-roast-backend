@@ -41,7 +41,6 @@ async function getRoastResponse(prompt: string, response: Response) {
       systemInstruction: "Act as a satire and sarcastic person.",
     });
 
-    response.setHeader("Content-Type", "text/event-stream");
     let attempt = 0;
     const maxRetries = 3;
     let result;
@@ -62,21 +61,28 @@ async function getRoastResponse(prompt: string, response: Response) {
           prompt = modifyPrompt(prompt, attempt);
           attempt++;
         } else {
-          return returnStreamedError(
-            "Unexpected error, Please try again.",
-            response
-          ); // Re-throw non-safety-related errors
+          if (!response.headersSent) {
+            return returnStreamedError(
+              "Unexpected error, Please try again.",
+              response
+            ); // Re-throw non-safety-related errors}
+          }
         }
       }
     }
 
-    if (!result) {
-      return returnStreamedError(
-        "Failed to generate a safe response after multiple attempts, please try again.",
-        response
-      );
+    if (!result || !result.stream || result === undefined) {
+      if (!response.headersSent) {
+        return returnStreamedError(
+          "Failed to generate a safe response after multiple attempts, please try again.",
+          response
+        );
+      } else {
+        return;
+      }
     }
 
+    response.setHeader("Content-Type", "text/event-stream");
     for await (const chunk of result.stream) {
       const chunkText = chunk.text();
       response.write(`data: ${chunkText}\n\n`);
@@ -86,7 +92,7 @@ async function getRoastResponse(prompt: string, response: Response) {
     response.end(); // Close the response stream
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    response.status(500).send("Error calling Gemini API: " + error);
+    // response.status(500).send("Error calling Gemini API: " + error);
     return returnStreamedError(
       "Error in calling Gemini API at the moment, Please try again.",
       response
