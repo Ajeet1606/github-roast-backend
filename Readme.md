@@ -9,7 +9,7 @@ It's a standalone backend and a fun and interactive tool that fetches GitHub pro
 - Gemini API for generating the roast message
 
 ## Features ⭐
-- Fetches GitHub profile details using the GitHub API.
+- Fetches GitHub profile details using the GitHub GraphQL API.
 - Generates a roast message with the Gemini API.
 - Streams the roast message for an interactive experience.
 
@@ -49,7 +49,7 @@ yarn dev
 ```
 
 ## Endpoints
-we've only one endpoint ```/roast/:username``` which takes your github username and gives sends you the roast response from Gemini in streamed format.
+we've only one endpoint ```/roast/:username``` which takes your github username and sends you the roast response from Gemini in streamed format.
 
 ## Acknowledgments 🙏
 - GitHub API
