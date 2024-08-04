@@ -51,14 +51,6 @@ yarn dev
 ## Endpoints
 we've only one endpoint ```/roast/:username``` which takes your github username and gives sends you the roast response from Gemini in streamed format.
 
-## Contributing 🤝
-We welcome contributions to RoastGithub! If you would like to contribute, please follow these guidelines:
-
-1. Fork the repository.
-2. Create a new branch for your feature or fix.
-3. Make your changes and ensure that they are well-tested.
-4. Submit a pull request with a clear description of your changes.
-
 ## Acknowledgments 🙏
 - GitHub API
 - Gemini API
