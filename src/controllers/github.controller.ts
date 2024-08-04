@@ -14,8 +14,8 @@ export async function roastUser(request: Request, response: Response) {
   if (!userDetails) {
     return returnStreamedError("Github Profile not found.", response);
   }
-
-  const prompt = `Here's a GitHub profile for you to roast:
+  
+  const prompt = `Take a look at this GitHub profile and give it a light-hearted, playful roast:
     - Name: ${userDetails.name}
     - Bio: ${userDetails.bio}
     - Avatar URL: ${userDetails.avatarUrl}
@@ -23,9 +23,10 @@ export async function roastUser(request: Request, response: Response) {
     - Followers: ${userDetails.followers.totalCount}
     - Following: ${userDetails.following.totalCount}
     - Starred Repositories: ${userDetails.starredRepositories.totalCount}
-    - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} in this year.
+    - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} this year.
 
-    Go ahead and give a satire roast of this GitHub user! Keep it in around 70 words. If they've done really great, appreaciate them as well.`;
+    Please keep the roast friendly, simple, and under 70 words. Avoid anything offensive, and have fun!`;
+
   return await getRoastResponse(prompt, response, userDetails.avatarUrl);
 }
 
@@ -99,7 +100,7 @@ async function getRoastResponse(
     response.end(); // Close the response stream
     // console.log("Response sent successfully");
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling Gemini API, content blocked issue.");
     // response.status(500).send("Error calling Gemini API: " + error);
     return returnStreamedError(
       "Error in calling Gemini API at the moment, Please try again.",
@@ -185,7 +186,5 @@ function returnStreamedError(message: string, response: Response) {
     response.write(`data: ${JSON.stringify({ type: 'error', content: message })}\n\n`);
     response.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
     response.end();
-  } else {
-    console.error("Headers already sent, cannot send error response");
   }
 }
