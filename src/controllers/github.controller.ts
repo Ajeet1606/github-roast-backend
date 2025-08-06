@@ -25,7 +25,7 @@ export async function roastUser(request: Request, response: Response) {
     - Starred Repositories: ${userDetails.starredRepositories.totalCount}
     - Total Commits: ${userDetails.contributionsCollection.totalCommitContributions} this year.
 
-    Please keep the roast friendly, simple, and under 70 words. Avoid anything offensive, and have fun!`;
+    Please roast them badly and keep under 70 words. Avoid anything offensive, and have fun!`;
 
   return await getRoastResponse(prompt, response, userDetails.avatarUrl);
 }
